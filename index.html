@@ -9,488 +9,369 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
   />
 
   <style>
     :root {
       --bg: #ffffff;
-      --fg: #111111;
-      --card-bg: #f6f6f6;
-      --border: #cccccc;
-      --accent: #2563eb;
+      --fg: #111;
+      --border: #ddd;
+      --link: #064CBD;
     }
     body.dark {
-      --bg: #0f172a;
-      --fg: #e5e7eb;
-      --card-bg: #111827;
-      --border: #374151;
-      --accent: #60a5fa;
+      --bg: #0d1117;
+      --fg: #d1d5db;
+      --border: #2f3339;
+      --link: #7aa2f7;
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      max-width: 1100px;
+      font-family: system-ui, sans-serif;
       margin: auto;
       padding: 1.5rem;
+      max-width: 900px;
       background: var(--bg);
       color: var(--fg);
-      transition: background 0.2s, color 0.2s;
+      line-height: 1.6;
+      transition: background .2s, color .2s;
     }
-    a { color: var(--accent); }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
+    h1, h2 {
+      margin-top: 2.4rem;
+      margin-bottom: .6rem;
+      font-weight: 600;
     }
-
-    h1 {
-      font-size: 1.7rem;
-      margin: 0;
-    }
-
-    .toggle {
-      padding: 0.3rem 0.8rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--card-bg);
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 1rem;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border-radius: 0.75rem;
-      padding: 0.9rem 1rem;
-      border: 1px solid var(--border);
-    }
-
-    .card h2 {
-      font-size: 1.1rem;
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-    }
+    h1 { font-size: 1.9rem; }
+    h2 { font-size: 1.4rem; }
 
     table {
       border-collapse: collapse;
       width: 100%;
-      font-size: 0.9rem;
+      margin-top: .7rem;
+      font-size: .95rem;
     }
     th, td {
+      padding: .4rem .5rem;
       border: 1px solid var(--border);
-      padding: 0.35rem 0.4rem;
-      text-align: right;
     }
-    th:first-child, td:first-child {
+    th {
+      background: rgba(0,0,0,0.05);
       text-align: left;
     }
 
-    #last10-table {
-      max-height: 280px;
-      overflow-y: auto;
-      margin-top: 0.5rem;
-    }
+    a { color: var(--link); }
 
-    /* Heatmap */
-    #heatmap {
-      display: grid;
-      grid-template-columns: 60px repeat(24, 1fr);
-      gap: 1px;
-      font-size: 0.7rem;
-    }
-    .heat-header {
-      text-align: center;
-      padding: 0.1rem;
-    }
-    .heat-cell {
-      text-align: center;
-      padding: 0.15rem;
-      cursor: default;
-      color: #f9fafb;
-    }
-    .heat-label {
-      padding: 0.2rem 0.3rem;
-    }
-
-    /* Map */
     #map {
       width: 100%;
-      height: 330px;
-      border-radius: 0.75rem;
+      height: 350px;
       border: 1px solid var(--border);
-      margin-top: 0.5rem;
+      margin-top: .8rem;
+      border-radius: .4rem;
     }
 
+    .toggle {
+      float: right;
+      padding: .35rem .7rem;
+      font-size: .85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: none;
+      cursor: pointer;
+    }
+
+    .section {
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+    }
+
+    .stats-grid {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: .5rem;
+    }
+    .stat {
+      min-width: 140px;
+    }
     .stat-value {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 600;
     }
     .stat-label {
-      font-size: 0.8rem;
-      opacity: 0.8;
+      font-size: .85rem;
+      opacity: .75;
     }
 
-    @media (max-width: 600px) {
-      body { padding: 1rem; }
+    #heatmap {
+      margin-top: .8rem;
+      font-size: .75rem;
+    }
+    .heat-row { display: flex; }
+    .cell {
+      width: 18px;
+      height: 18px;
+      margin: 1px;
+      line-height: 18px;
+      font-size: 10px;
+      text-align: center;
+      border-radius: 2px;
+      background: transparent;
+    }
+    .cell-label {
+      width: 24px;
+      margin-right: .4rem;
     }
   </style>
 </head>
+
 <body>
 
-<header>
-  <div>
-    <h1>Vliegtuigen boven Arnhem</h1>
-    <p style="margin:0.2rem 0 0;">
-      Gegevens afkomstig van
-      <a href="https://adsb.fi" target="_blank" rel="noreferrer">adsb.fi open data</a>.
-      Persoonlijk &amp; niet-commercieel gebruik.
-    </p>
-  </div>
-  <button id="darkToggle" class="toggle">🌙 Donkere modus</button>
-</header>
+<button class="toggle" id="darkToggle">🌙 Donkere modus</button>
 
-<div class="grid" style="margin-bottom:1rem;">
-  <div class="card">
-    <h2>Overzicht</h2>
-    <div class="grid">
-      <div>
-        <div class="stat-value" id="stat-total">–</div>
-        <div class="stat-label">Totaal vluchten</div>
-      </div>
-      <div>
-        <div class="stat-value" id="stat-median">–</div>
-        <div class="stat-label">Mediaan per dag</div>
-      </div>
-      <div>
-        <div class="stat-value" id="stat-busiest">–</div>
-        <div class="stat-label">Drukste dag</div>
-      </div>
-    </div>
-    <p style="margin-top:0.6rem; font-size:0.8rem;">
-      Periode: <span id="stat-range">–</span>
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>Top 10 callsigns</h2>
-    <div style="max-height:180px; overflow-y:auto;">
-      <table id="topcallsigns">
-        <thead>
-          <tr>
-            <th>Callsign</th>
-            <th>Aantal</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="grid" style="margin-bottom:1rem;">
-  <div class="card">
-    <h2>Laatste 10 vliegtuigen</h2>
-    <div id="last10-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Tijd (UTC)</th>
-            <th>Callsign</th>
-            <th>Snelheid (km/h)</th>
-            <th>Hoogte (km)</th>
-          </tr>
-        </thead>
-        <tbody id="last10-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Aantal vluchten per dag</h2>
-    <canvas id="dailyChart" height="180"></canvas>
-  </div>
-</div>
-
-<div class="grid" style="margin-bottom:1rem;">
-  <div class="card">
-    <h2>Drukte per uur (gemiddeld)</h2>
-    <div id="heatmap"></div>
-  </div>
-  <div class="card">
-    <h2>Laatste vliegroutes</h2>
-    <div id="map"></div>
-  </div>
-</div>
-
-<p style="font-size:0.75rem; opacity:0.7; margin-top:1.5rem;">
-  Deze pagina gebruikt open data van adsb.fi en een straal van ongeveer 5 km rond het centrum van Arnhem.
+<h1>Vliegtuigen boven Arnhem</h1>
+<p>
+  Deze pagina toont vliegbewegingen binnen ±5 km rond Arnhem.<br/>
+  Gegevens afkomstig van
+  <a href="https://adsb.fi" target="_blank">adsb.fi</a>,
+  privé & niet-commercieel gebruik.
 </p>
 
-<!-- Leaflet JS -->
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-o9N1j7kGStG3dnG18su1mD0C6hiwqvZ6V1lP6RKz0+w="
-  crossorigin=""
-></script>
+<!-- =============================== -->
+<!-- Overzicht cijfers -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Overzicht</h2>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <div class="stats-grid">
+    <div class="stat">
+      <div class="stat-value" id="stat-total">–</div>
+      <div class="stat-label">Totaal vluchten</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-median">–</div>
+      <div class="stat-label">Mediaan per dag</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-busiest">–</div>
+      <div class="stat-label">Drukste dag</div>
+    </div>
+  </div>
+
+  <p style="margin-top:.7rem;font-size:.9rem;">
+    Periode: <span id="stat-range">–</span>
+  </p>
+</div>
+
+<!-- =============================== -->
+<!-- Laatste 10 -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Laatste 10 vliegtuigen</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tijd (UTC)</th>
+        <th>Callsign</th>
+        <th>Snelheid (km/h)</th>
+        <th>Hoogte (km)</th>
+      </tr>
+    </thead>
+    <tbody id="last10-body"></tbody>
+  </table>
+</div>
+
+<!-- =============================== -->
+<!-- Dag-totalen -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Aantal vluchten per dag</h2>
+  <canvas id="dailyChart" height="140"></canvas>
+</div>
+
+<!-- =============================== -->
+<!-- Heatmap -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Drukte per uur (gemiddeld)</h2>
+  <div id="heatmap"></div>
+</div>
+
+<!-- =============================== -->
+<!-- Top 10 callsigns -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Top 10 callsigns</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Callsign</th>
+        <th>Aantal</th>
+      </tr>
+    </thead>
+    <tbody id="topcallsigns"></tbody>
+  </table>
+</div>
+
+<!-- =============================== -->
+<!-- Tracks -->
+<!-- =============================== -->
+<div class="section">
+  <h2>Laatste vliegroutes</h2>
+  <div id="map"></div>
+</div>
+
+<!-- =============================== -->
+<!-- Leaflet, Chart.js -->
+<!-- =============================== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// ========= CONFIG =========
 const BACKEND = "https://arnhem-flights-api.onrender.com";
 
-// ========= HELPERS =========
-function kts_to_kmh(kts) {
-  return kts ? (kts * 1.852).toFixed(1) : "";
-}
-function ft_to_km(ft) {
-  return ft ? (ft * 0.0003048).toFixed(2) : "";
-}
-function fmtDate(iso) {
-  if (!iso) return "–";
-  return iso.slice(0, 10);
-}
+/* ---------- helpers ---------- */
+function kts_to_kmh(kts){ return kts ? (kts * 1.852).toFixed(1) : "" }
+function ft_to_km(ft){ return ft ? (ft * 0.0003048).toFixed(2) : "" }
+function fmtDate(iso){ return iso ? iso.slice(0,10) : "–" }
 
-// ========= DARK MODE =========
-const darkToggle = document.getElementById("darkToggle");
-const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-if (prefersDark) document.body.classList.add("dark");
-
-darkToggle.addEventListener("click", () => {
+/* ---------- dark mode ---------- */
+document.getElementById("darkToggle").onclick = () =>
   document.body.classList.toggle("dark");
-});
 
-// ========= LAST 10 =========
-async function loadLast10() {
-  try {
-    const r = await fetch(`${BACKEND}/api/last10`);
-    const data = await r.json();
-    const tbody = document.getElementById("last10-body");
-    tbody.innerHTML = "";
-    for (const row of data) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
+/* ---------- last10 ---------- */
+async function loadLast10(){
+  const r = await fetch(`${BACKEND}/api/last10`);
+  const data = await r.json();
+  const tb = document.getElementById("last10-body");
+  tb.innerHTML = "";
+  data.forEach(row=>{
+    tb.innerHTML += `
+      <tr>
         <td>${row.ts}</td>
-        <td>${row.callsign || ""}</td>
+        <td>${row.callsign}</td>
         <td>${kts_to_kmh(row.gs_kts)}</td>
         <td>${ft_to_km(row.alt_ft)}</td>
-      `;
-      tbody.appendChild(tr);
+      </tr>`;
+  });
+}
+
+/* ---------- stats ---------- */
+async function loadStats(){
+  const r = await fetch(`${BACKEND}/api/stats`);
+  const s = await r.json();
+  document.getElementById("stat-total").textContent = s.total_flights;
+  document.getElementById("stat-median").textContent = s.median_per_day;
+  document.getElementById("stat-busiest").textContent =
+    s.max_per_day ? `${s.max_per_day} (${s.max_per_day_date})` : "–";
+  document.getElementById("stat-range").textContent =
+    `${fmtDate(s.first_ts)} – ${fmtDate(s.last_ts)}`;
+}
+
+/* ---------- daily chart ---------- */
+let chart;
+async function loadDaily(){
+  const r = await fetch(`${BACKEND}/api/daily_counts`);
+  const d = await r.json();
+  const ctx = document.getElementById("dailyChart");
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:d.map(x=>x.day),
+      datasets:[{data:d.map(x=>x.flights)}]
+    },
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+  });
+}
+
+/* ---------- top callsigns ---------- */
+async function loadTop(){
+  const r = await fetch(`${BACKEND}/api/top_callsigns`);
+  const d = await r.json();
+  const tb = document.getElementById("topcallsigns");
+  tb.innerHTML = "";
+  d.forEach(x=>{
+    tb.innerHTML += `<tr><td>${x.callsign}</td><td>${x.flights}</td></tr>`;
+  });
+}
+
+/* ---------- heatmap ---------- */
+async function loadHeatmap(){
+  const r = await fetch(`${BACKEND}/api/hourly_heatmap`);
+  const d = await r.json();
+  
+  const max = Math.max(...d.map(x => x.flights), 1);
+  const weekdays = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
+  const map = document.getElementById("heatmap");
+  map.innerHTML = "";
+
+  for(let dow=0;dow<7;dow++){
+    const row = document.createElement("div");
+    row.className = "heat-row";
+
+    const label = document.createElement("div");
+    label.textContent = weekdays[dow];
+    label.className = "cell-label";
+    row.appendChild(label);
+
+    for(let h=0;h<24;h++){
+      const rec = d.find(x => x.dow===dow && x.hour===h);
+      const v = rec ? rec.flights : 0;
+      const t = v/max;
+      const c = v? `rgba(8, 48, 107, ${0.3 + 0.7*t})` : "transparent";
+
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.style.background = c;
+      cell.title = `${weekdays[dow]} ${h}:00 — ${v} vluchten`;
+      row.appendChild(cell);
     }
-  } catch (e) {
-    console.error("last10 error:", e);
+    map.appendChild(row);
   }
 }
 
-// ========= STATS =========
-async function loadStats() {
-  try {
-    const r = await fetch(`${BACKEND}/api/stats`);
-    const s = await r.json();
-    document.getElementById("stat-total").textContent = s.total_flights ?? "0";
+/* ---------- map & tracks ---------- */
+let Lmap;
+let layers = [];
 
-    let med = s.median_per_day || 0;
-    document.getElementById("stat-median").textContent =
-      typeof med === "number" ? med.toFixed(1) : med;
-
-    const busiest = s.max_per_day && s.max_per_day_date
-      ? `${s.max_per_day} (${s.max_per_day_date})`
-      : "–";
-    document.getElementById("stat-busiest").textContent = busiest;
-
-    const range = `${fmtDate(s.first_ts)} – ${fmtDate(s.last_ts)}`;
-    document.getElementById("stat-range").textContent = range;
-  } catch (e) {
-    console.error("stats error:", e);
-  }
+function initMap(){
+  Lmap = L.map("map").setView([51.9851,5.8987],11);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    .addTo(Lmap);
 }
 
-// ========= DAILY CHART =========
-let dailyChart;
-async function loadDailyChart() {
-  try {
-    const r = await fetch(`${BACKEND}/api/daily_counts`);
-    const data = await r.json();
-    const labels = data.map(d => d.day);
-    const values = data.map(d => d.flights);
+async function loadTracks(){
+  if(!Lmap) initMap();
+  layers.forEach(l=>l.remove());
+  layers = [];
 
-    const ctx = document.getElementById("dailyChart");
-    if (dailyChart) dailyChart.destroy();
-    dailyChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [{
-          label: "vluchten per dag",
-          data: values
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { maxRotation: 45, minRotation: 45 } },
-          y: { beginAtZero: true }
-        }
-      }
-    });
-  } catch (e) {
-    console.error("daily chart error:", e);
-  }
+  const r = await fetch(`${BACKEND}/api/tracks`);
+  const tracks = await r.json();
+
+  tracks.forEach((tr,i)=>{
+    const pts = tr.points.map(p=>[p.lat,p.lon]);
+    if(pts.length<2) return;
+    const col = ["#d33","#36f","#3c3","#eaa","#a3f","#f3a","#0bb","#fa0","#099","#444"][i%10];
+    const line = L.polyline(pts,{color:col,weight:2}).addTo(Lmap);
+    line.bindPopup(tr.callsign);
+    layers.push(line);
+  });
+
+  const all = layers.flatMap(l=>l.getLatLngs());
+  if(all.length) Lmap.fitBounds(all,{padding:[20,20]});
 }
 
-// ========= TOP CALLSIGNS =========
-async function loadTopCallsigns() {
-  try {
-    const r = await fetch(`${BACKEND}/api/top_callsigns`);
-    const data = await r.json();
-    const tbody = document.querySelector("#topcallsigns tbody");
-    tbody.innerHTML = "";
-    for (const row of data) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${row.callsign}</td>
-        <td>${row.flights}</td>
-      `;
-      tbody.appendChild(tr);
-    }
-  } catch (e) {
-    console.error("top callsigns error:", e);
-  }
-}
-
-// ========= HOURLY HEATMAP =========
-async function loadHeatmap() {
-  try {
-    const r = await fetch(`${BACKEND}/api/hourly_heatmap`);
-    const data = await r.json();
-
-    const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
-    let max = 0;
-    for (const row of data) {
-      const dow = row.dow;
-      const hour = row.hour;
-      const flights = row.flights;
-      grid[dow][hour] = flights;
-      if (flights > max) max = flights;
-    }
-
-    const weekdayNames = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
-    const heatDiv = document.getElementById("heatmap");
-    heatDiv.innerHTML = "";
-
-    // header row
-    heatDiv.appendChild(document.createElement("div"));
-    for (let h = 0; h < 24; h++) {
-      const d = document.createElement("div");
-      d.className = "heat-header";
-      d.textContent = h.toString().padStart(2, "0");
-      heatDiv.appendChild(d);
-    }
-
-    // rows
-    for (let dow = 0; dow < 7; dow++) {
-      const label = document.createElement("div");
-      label.className = "heat-label";
-      label.textContent = weekdayNames[dow];
-      heatDiv.appendChild(label);
-
-      for (let h = 0; h < 24; h++) {
-        const v = grid[dow][h];
-        const cell = document.createElement("div");
-        cell.className = "heat-cell";
-        if (max > 0 && v > 0) {
-          const t = v / max;
-          const rC = 8 + Math.round((56 - 8) * t);
-          const gC = 48 + Math.round((152 - 48) * t);
-          const bC = 107 + Math.round((255 - 107) * t);
-          cell.style.backgroundColor = `rgb(${rC},${gC},${bC})`;
-        } else {
-          cell.style.backgroundColor = "transparent";
-          cell.style.color = "inherit";
-        }
-        cell.title = `${weekdayNames[dow]} ${h}:00 – ${v} vluchten`;
-        cell.textContent = v ? v : "";
-        heatDiv.appendChild(cell);
-      }
-    }
-  } catch (e) {
-    console.error("heatmap error:", e);
-  }
-}
-
-// ========= TRACKS MAP =========
-let map;
-let trackLayers = [];
-
-function initMap() {
-  map = L.map("map").setView([51.9851, 5.8987], 9);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap-bijdragers"
-  }).addTo(map);
-}
-
-function clearTracks() {
-  for (const l of trackLayers) l.remove();
-  trackLayers = [];
-}
-
-async function loadTracks() {
-  try {
-    if (!map) initMap();
-    const r = await fetch(`${BACKEND}/api/tracks`);
-    const data = await r.json();
-    clearTracks();
-
-    const colors = ["#ef4444","#3b82f6","#22c55e","#eab308","#a855f7","#ec4899",
-                    "#14b8a6","#f97316","#06b6d4","#4b5563"];
-
-    let bounds = [];
-    data.forEach((track, idx) => {
-      const pts = track.points
-        .filter(p => p.lat != null && p.lon != null)
-        .map(p => [p.lat, p.lon]);
-      if (pts.length < 2) return;
-      const color = colors[idx % colors.length];
-      const poly = L.polyline(pts, { color, weight: 2 });
-      poly.addTo(map).bindPopup(`${track.callsign}`);
-      trackLayers.push(poly);
-      bounds = bounds.concat(pts);
-    });
-
-    if (bounds.length) {
-      map.fitBounds(bounds, { padding: [20,20] });
-    }
-  } catch (e) {
-    console.error("tracks error:", e);
-  }
-}
-
-// ========= INIT =========
+/* ---------- init ---------- */
 loadLast10();
 loadStats();
-loadDailyChart();
-loadTopCallsigns();
+loadDaily();
+loadTop();
 loadHeatmap();
 loadTracks();
 
-// periodic refreshes
-setInterval(loadLast10, 60000);
-setInterval(loadTracks, 120000);
-setInterval(loadDailyChart, 300000);
-setInterval(loadTopCallsigns, 300000);
+setInterval(loadLast10,60000);
+setInterval(loadTracks,120000);
 </script>
 
 </body>
