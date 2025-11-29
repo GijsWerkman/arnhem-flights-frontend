@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
-  <title>Vliegtuig herrie boven Arnhem</title>
+  <title>Vliegtuigen boven Arnhem</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 1.5rem; }
     table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
@@ -28,7 +28,7 @@
 </table>
 
 <script>
-const BACKEND = "https://YOUR-BACKEND-URL";  // ← replace after deployment
+const BACKEND = "https://arnhem-flights-api.onrender.com";
 
 function kts_to_kmh(kts) {
   return kts ? (kts * 1.852).toFixed(1) : "";
@@ -38,25 +38,32 @@ function ft_to_km(ft) {
 }
 
 async function load() {
-  const r = await fetch(BACKEND + "/api/last10");
-  const data = await r.json();
-  let tbody = document.querySelector("#tbl tbody");
-  tbody.innerHTML = "";
-  for (const row of data) {
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.ts}</td>
-      <td>${row.callsign || ""}</td>
-      <td>${kts_to_kmh(row.gs_kts)}</td>
-      <td>${ft_to_km(row.alt_ft)}</td>
-    `;
-    tbody.appendChild(tr);
+  try {
+    const r = await fetch(BACKEND + "/api/last10");
+    const data = await r.json();
+
+    let tbody = document.querySelector("#tbl tbody");
+    tbody.innerHTML = "";
+
+    for (const row of data) {
+      let tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.ts}</td>
+        <td>${row.callsign || ""}</td>
+        <td>${kts_to_kmh(row.gs_kts)}</td>
+        <td>${ft_to_km(row.alt_ft)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  } catch (err) {
+    console.error("API error:", err);
   }
 }
 
 load();
 setInterval(load, 60000);
 </script>
+
 
 </body>
 </html>
