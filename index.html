@@ -1,64 +1,76 @@
 <!doctype html>
 <html lang="nl">
-
 <head>
   <meta charset="utf-8" />
-  <title>Vliegtuigen boven Arnhem</title>
+  <title>Vliegtuig herrie boven Arnhem</title>
+
+  <!-- Fonts à la RMarkdown -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600&family=Roboto+Mono&display=swap" rel="stylesheet">
 
   <style>
     body {
-      font-family: "Segoe UI", Arial, sans-serif;
+      font-family: "Source Serif Pro", serif;
       max-width: 900px;
-      margin: 0 auto;
+      margin: auto;
       padding: 2rem;
       line-height: 1.6;
-      background: #fafafa;
       color: #222;
     }
 
-    h1, h2 {
-      border-bottom: 1px solid #ddd;
-      padding-bottom: .2rem;
-      margin-top: 2rem;
-      font-weight: 500;
+    h1, h2, h3 {
+      font-weight: 600;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
     }
+
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.7rem; margin-top: 2rem; }
+    h3 { font-size: 1.3rem; }
 
     table {
-      width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
-      background: white;
+      width: 100%;
+      margin: 1rem 0;
+      font-family: "Roboto Mono", monospace;
+      font-size: 0.9rem;
     }
-
     th, td {
-      border: 1px solid #e3e3e3;
-      padding: 0.5rem 0.6rem;
-      font-size: 0.95rem;
+      border: 1px solid #ddd;
+      padding: 0.35rem 0.5rem;
     }
-
     th {
-      background: #f0f0f0;
+      background: #f2f2f2;
       font-weight: 600;
     }
 
-    .note {
-      font-size: 0.9rem;
-      color: #666;
+    .section {
+      margin-bottom: 3rem;
+    }
+
+    /* RMarkdown-like code blocks for track JSON */
+    pre {
+      background: #f8f8f8;
+      padding: 1rem;
+      overflow-x: auto;
+      border-left: 4px solid #ccc;
     }
   </style>
-</head>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
 <body>
 
-  <h1>Vliegtuigen boven Arnhem</h1>
-  <p class="note">
-    Gegevens afkomstig van <a href="https://adsb.fi" target="_blank">adsb.fi open data</a>.
-    Dit project is persoonlijk & niet-commercieel.
-  </p>
+<h1>Vliegtuigen boven Arnhem</h1>
+<p>Bron: <a href="https://adsb.fi" target="_blank">adsb.fi open data</a> — persoonlijk & niet-commercieel gebruik.<br>
+Data binnen 5 km van Arnhem centrum.</p>
 
-  <!-- ----------------------- LAST 10 UNIQUE ----------------------- -->
 
-  <h2>Laatste 10 vliegtuigen (uniek per callsign)</h2>
+<!-- ===================== -->
+<!-- 1. LAATSTE 10 VLIEGTUIGEN -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Laatste 10 vliegtuigen (uniek)</h2>
 
   <table id="tbl-last10">
     <thead>
@@ -71,53 +83,257 @@
     </thead>
     <tbody></tbody>
   </table>
+</div>
 
-  <script>
-    const BACKEND = "https://arnhem-flights-api.onrender.com";
 
-    function to_amsterdam(iso) {
-      if (!iso) return "";
-      const dt = new Date(iso);
-      return dt.toLocaleString("nl-NL", {
-        timeZone: "Europe/Amsterdam",
-        hour12: false
-      }).replace(",", "");
+<!-- ===================== -->
+<!-- 2. STATISTIEKEN -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Statistieken</h2>
+  <div id="stats"></div>
+</div>
+
+
+<!-- ===================== -->
+<!-- 3. DAGELIJKSE GRAFIEK -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Vluchten per dag</h2>
+  <canvas id="dailyChart" height="80"></canvas>
+</div>
+
+
+<!-- ===================== -->
+<!-- 4. HEATMAP -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Uurlijkse drukte per weekdag</h2>
+  <canvas id="heatmap" height="250"></canvas>
+</div>
+
+
+<!-- ===================== -->
+<!-- 5. TOP CALLSIGNS -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Meest overvliegende callsigns</h2>
+  <table id="tbl-top">
+    <thead>
+      <tr>
+        <th>Callsign</th>
+        <th>Aantal</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+
+<!-- ===================== -->
+<!-- 6. TRACKS -->
+<!-- ===================== -->
+<div class="section">
+  <h2>Laatste 10 vliegsporen</h2>
+  <div id="tracks"></div>
+</div>
+
+
+
+<!-- ===================== -->
+<!-- JAVASCRIPT -->
+<!-- ===================== -->
+<script>
+const BACKEND = "YOUR_BACKEND_URL_HERE";
+
+
+/* --------------------------
+   Helpers
+---------------------------*/
+function kts_to_kmh(kts) {
+  return kts ? (kts * 1.852).toFixed(1) : "";
+}
+function ft_to_km(ft) {
+  return ft ? (ft * 0.0003048).toFixed(2) : "";
+}
+function to_amsterdam(iso) {
+  if (!iso) return "";
+  const dt = new Date(iso);
+  return dt.toLocaleString("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    hour12: false
+  }).replace(",", "");
+}
+
+
+/* --------------------------
+   1. Last 10 flights
+---------------------------*/
+async function loadLast10() {
+  const r = await fetch(BACKEND + "/api/last10");
+  const data = await r.json();
+
+  const tbody = document.querySelector("#tbl-last10 tbody");
+  tbody.innerHTML = "";
+
+  for (const row of data) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${to_amsterdam(row.ts)}</td>
+      <td>${row.callsign}</td>
+      <td>${kts_to_kmh(row.gs_kts)}</td>
+      <td>${ft_to_km(row.alt_ft)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+
+/* --------------------------
+   2. Load Stats
+---------------------------*/
+async function loadStats() {
+  const r = await fetch(BACKEND + "/api/stats");
+  const s = await r.json();
+
+  const el = document.getElementById("stats");
+  el.innerHTML = `
+    <p><strong>Totaal aantal geregistreerde vluchten:</strong> ${s.total_flights}</p>
+    <p><strong>Eerste meting:</strong> ${to_amsterdam(s.first_ts)}</p>
+    <p><strong>Laatste meting:</strong> ${to_amsterdam(s.last_ts)}</p>
+    <p><strong>Aantal dagen data:</strong> ${s.days}</p>
+    <p><strong>Mediaan per dag:</strong> ${s.median_per_day}</p>
+    <p><strong>Drukste dag:</strong> ${s.max_per_day_date} (${s.max_per_day} vluchten)</p>
+  `;
+}
+
+
+/* --------------------------
+   3. Daily counts chart
+---------------------------*/
+async function loadDailyChart() {
+  const r = await fetch(BACKEND + "/api/daily_counts");
+  const data = await r.json();
+
+  const labels = data.map(d => d.day);
+  const counts = data.map(d => d.flights);
+
+  new Chart(document.getElementById("dailyChart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Vluchten per dag",
+        data: counts,
+        borderColor: "#444",
+        borderWidth: 1,
+        tension: 0.1,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { x: { display: true }, y: { display: true } }
     }
+  });
+}
 
-    function kts_to_kmh(kts) {
-      return kts ? (kts * 1.852).toFixed(1) : "";
+
+/* --------------------------
+   4. Heatmap (Chart.js matrix)
+---------------------------*/
+async function loadHeatmap() {
+  const r = await fetch(BACKEND + "/api/hourly_heatmap");
+  const raw = await r.json();
+
+  // matrix 7 x 24
+  const mat = Array.from({length: 7}, () =>
+      Array.from({length: 24}, () => 0)
+  );
+
+  raw.forEach(r => {
+    mat[r.dow][r.hour] = r.flights;
+  });
+
+  new Chart(document.getElementById("heatmap"), {
+    type: "matrix",
+    data: {
+      datasets: [{
+        label: "Heatmap",
+        data: raw.map(r => ({ x: r.hour, y: r.dow, v: r.flights })),
+        backgroundColor: ctx => {
+          const v = ctx.raw.v;
+          const alpha = Math.min(0.05 + v / 50, 1);
+          return `rgba(50, 50, 80, ${alpha})`;
+        },
+        width: ctx => 20,
+        height: ctx => 20
+      }]
+    },
+    options: {
+      scales: {
+        x: { ticks: { callback: h => h + "h" }, min: 0, max: 23 },
+        y: { ticks: { callback: d => ["Zo","Ma","Di","Wo","Do","Vr","Za"][d] },
+             min: 0, max: 6 }
+      },
+      plugins: { legend: { display: false } }
     }
+  });
+}
 
-    function ft_to_km(ft) {
-      return ft ? (ft * 0.0003048).toFixed(2) : "";
-    }
 
-    async function load_last10() {
-      const r = await fetch(BACKEND + "/api/last10");
-      const data = await r.json();
+/* --------------------------
+   5. Top Callsigns
+---------------------------*/
+async function loadTop() {
+  const r = await fetch(BACKEND + "/api/top_callsigns");
+  const data = await r.json();
 
-      const tbody = document.querySelector("#tbl-last10 tbody");
-      tbody.innerHTML = "";
+  const tbody = document.querySelector("#tbl-top tbody");
+  tbody.innerHTML = "";
 
-      data.forEach(row => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${to_amsterdam(row.ts)}</td>
-          <td>${row.callsign}</td>
-          <td>${kts_to_kmh(row.gs_kts)}</td>
-          <td>${ft_to_km(row.alt_ft)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+  for (const row of data) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.callsign}</td>
+      <td>${row.flights}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
 
-    // Initial load
-    load_last10();
 
-    // Refresh every minute
-    setInterval(load_last10, 60000);
-  </script>
+/* --------------------------
+   6. Tracks (simple JSON list)
+---------------------------*/
+async function loadTracks() {
+  const r = await fetch(BACKEND + "/api/tracks");
+  const data = await r.json();
 
+  const div = document.getElementById("tracks");
+  div.innerHTML = "";
+
+  data.forEach(track => {
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(track, null, 2);
+    div.appendChild(pre);
+  });
+}
+
+
+/* --------------------------
+   Load all on start
+---------------------------*/
+loadLast10();
+loadStats();
+loadDailyChart();
+loadHeatmap();
+loadTop();
+loadTracks();
+
+// refresh last 10 every minute
+setInterval(loadLast10, 60000);
+</script>
 </body>
-
 </html>
