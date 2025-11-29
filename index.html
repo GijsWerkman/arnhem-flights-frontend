@@ -1,324 +1,123 @@
 <!doctype html>
 <html lang="nl">
+
 <head>
-<meta charset="utf-8" />
-<title>Vliegtuig herrie boven Arnhem</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Vliegtuigen boven Arnhem</title>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fafafa;
+      color: #222;
+    }
 
-<style>
-/* ==================== */
-/*  Rmarkdown-like style */
-/* ==================== */
+    h1, h2 {
+      border-bottom: 1px solid #ddd;
+      padding-bottom: .2rem;
+      margin-top: 2rem;
+      font-weight: 500;
+    }
 
-body {
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.6;
-  color: #333;
-  background: #fff;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 30px 20px 60px;
-}
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: white;
+    }
 
-h1, h2, h3 {
-  font-weight: 600;
-  margin-top: 2.2rem;
-  margin-bottom: 1rem;
-}
+    th, td {
+      border: 1px solid #e3e3e3;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.95rem;
+    }
 
-h1 { font-size: 2.0rem; }
-h2 { font-size: 1.45rem; }
-h3 { font-size: 1.2rem; }
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
 
-p { margin: 0.8rem 0; }
-
-hr {
-  border: none;
-  border-top: 1px solid #ddd;
-  margin: 2rem 0 1.5rem;
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin-top: 0.5rem;
-  font-size: 0.92rem;
-  font-family: "Source Code Pro", Consolas, monospace;
-}
-
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px 8px;
-}
-
-th {
-  background: #f7f7f7;
-  font-weight: 600;
-}
-
-#map {
-  width: 100%;
-  height: 350px;
-  border: 1px solid #ccc;
-  margin-top: 0.7rem;
-}
-
-figcaption {
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 0.4rem;
-}
-
-/* Heatmap Rmd style */
-.heat-row { display: flex; margin-bottom: 3px; }
-.cell-label {
-  width: 26px; text-align: right;
-  margin-right: 6px;
-  font-size: 0.75rem;
-  color: #666;
-}
-.cell {
-  width: 16px; height: 16px;
-  margin-right: 2px;
-  border-radius: 2px;
-}
-
-/* Stats layout (Rmd paragraph-like) */
-.stat-line {
-  font-size: 1rem;
-  margin: .3rem 0;
-}
-.stat-label {
-  font-weight: bold;
-}
-
-/* Code blocks style */
-pre {
-  background: #f7f7f7;
-  padding: 0.8rem;
-  overflow-x: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-</style>
+    .note {
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>Vliegtuigen boven Arnhem</h1>
-<p>
-  Data binnen ~5 km rond Arnhem, verzameld via
-  <a href="https://adsb.fi" target="_blank">adsb.fi open data</a>.
-</p>
+  <h1>Vliegtuigen boven Arnhem</h1>
+  <p class="note">
+    Gegevens afkomstig van <a href="https://adsb.fi" target="_blank">adsb.fi open data</a>.
+    Dit project is persoonlijk & niet-commercieel.
+  </p>
 
-<hr/>
+  <!-- ----------------------- LAST 10 UNIQUE ----------------------- -->
 
-<h2>Overzicht</h2>
-<p class="stat-line"><span class="stat-label">Totaal aantal vluchten:</span> <span id="stat-total">–</span></p>
-<p class="stat-line"><span class="stat-label">Mediaan per dag:</span> <span id="stat-median">–</span></p>
-<p class="stat-line"><span class="stat-label">Drukste dag:</span> <span id="stat-busiest">–</span></p>
-<p class="stat-line"><span class="stat-label">Periode:</span> <span id="stat-range">–</span></p>
+  <h2>Laatste 10 vliegtuigen (uniek per callsign)</h2>
 
-<hr/>
-
-<h2>Laatste 10 vliegtuigen</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Tijd (UTC)</th>
-      <th>Callsign</th>
-      <th>Snelheid (km/h)</th>
-      <th>Hoogte (km)</th>
-    </tr>
-  </thead>
-  <tbody id="last10-body"></tbody>
-</table>
-
-<hr/>
-
-<h2>Aantal vluchten per dag</h2>
-<canvas id="dailyChart" height="150"></canvas>
-<figcaption>Dagelijkse tellingen binnen de Arnhem-zone</figcaption>
-
-<hr/>
-
-<h2>Drukte per uur (heatmap)</h2>
-<div id="heatmap"></div>
-
-<hr/>
-
-<h2>Top 10 callsigns</h2>
-<table>
-  <thead>
-    <tr><th>Callsign</th><th>Aantal</th></tr>
-  </thead>
-  <tbody id="topcallsigns"></tbody>
-</table>
-
-<hr/>
-
-<h2>Laatste vliegroutes</h2>
-<div id="map"></div>
-<figcaption>Kaart met de laatste bekende vluchtroutes</figcaption>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-const BACKEND = "https://arnhem-flights-api.onrender.com";
-
-/* helpers */
-function kts_to_kmh(k){ return k ? (k*1.852).toFixed(1) : "" }
-function ft_to_km(f){ return f ? (f*0.0003048).toFixed(2) : "" }
-function fmt(iso){ return iso ? iso.slice(0,10) : "–" }
-
-/* --- last 10 --- */
-async function loadLast10(){
-  const r = await fetch(`${BACKEND}/api/last10`);
-  const d = await r.json();
-  const tb = document.getElementById("last10-body");
-  tb.innerHTML = "";
-  d.forEach(x=>{
-    tb.innerHTML += `
+  <table id="tbl-last10">
+    <thead>
       <tr>
-        <td>${x.ts}</td>
-        <td>${x.callsign || ""}</td>
-        <td>${kts_to_kmh(x.gs_kts)}</td>
-        <td>${ft_to_km(x.alt_ft)}</td>
-      </tr>`;
-  });
-}
+        <th>Tijd (Amsterdam)</th>
+        <th>Callsign</th>
+        <th>Snelheid (km/h)</th>
+        <th>Hoogte (km)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-/* --- stats --- */
-async function loadStats(){
-  const r = await fetch(`${BACKEND}/api/stats`);
-  const s = await r.json();
-  document.getElementById("stat-total").textContent = s.total_flights;
-  document.getElementById("stat-median").textContent = s.median_per_day;
-  document.getElementById("stat-busiest").textContent =
-    s.max_per_day ? `${s.max_per_day} (${s.max_per_day_date})` : "–";
-  document.getElementById("stat-range").textContent =
-    `${fmt(s.first_ts)} – ${fmt(s.last_ts)}`;
-}
+  <script>
+    const BACKEND = "https://arnhem-flights-api.onrender.com";
 
-/* --- daily chart --- */
-let chart;
-async function loadDaily(){
-  const r = await fetch(`${BACKEND}/api/daily_counts`);
-  const d = await r.json();
-  const ctx = document.getElementById("dailyChart");
-  if(chart) chart.destroy();
-  chart = new Chart(ctx,{
-    type: "line",
-    data: {
-      labels: d.map(x=>x.day),
-      datasets: [{
-        data: d.map(x=>x.flights),
-        borderWidth: 1.5,
-        fill: false
-      }]
-    },
-    options: {
-      plugins:{ legend:{display:false} },
-      scales:{ y:{ beginAtZero:true } }
-    }
-  });
-}
-
-/* --- top callsigns --- */
-async function loadTop(){
-  const r = await fetch(`${BACKEND}/api/top_callsigns`);
-  const d = await r.json();
-  const tb = document.getElementById("topcallsigns");
-  tb.innerHTML = "";
-  d.forEach(x=>{
-    tb.innerHTML += `<tr><td>${x.callsign}</td><td>${x.flights}</td></tr>`;
-  });
-}
-
-/* --- heatmap --- */
-async function loadHeatmap(){
-  const r = await fetch(`${BACKEND}/api/hourly_heatmap`);
-  const d = await r.json();
-  const max = Math.max(...d.map(x => x.flights), 1);
-  const weekdays = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
-  const wrap = document.getElementById("heatmap");
-  wrap.innerHTML = "";
-
-  for(let dow=0; dow<7; dow++){
-    const row = document.createElement("div");
-    row.className = "heat-row";
-
-    const label = document.createElement("div");
-    label.className = "cell-label";
-    label.textContent = weekdays[dow];
-    row.appendChild(label);
-
-    for(let h=0; h<24; h++){
-      const rec = d.find(x=>x.dow===dow && x.hour===h);
-      const v = rec ? rec.flights : 0;
-      const t = v/max;
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.style.background = v
-        ? `rgba(0,0,0,${0.15 + 0.55*t})`
-        : "transparent";
-      cell.title = `${weekdays[dow]} ${h}:00 — ${v} vluchten`;
-      row.appendChild(cell);
+    function to_amsterdam(iso) {
+      if (!iso) return "";
+      const dt = new Date(iso);
+      return dt.toLocaleString("nl-NL", {
+        timeZone: "Europe/Amsterdam",
+        hour12: false
+      }).replace(",", "");
     }
 
-    wrap.appendChild(row);
-  }
-}
+    function kts_to_kmh(kts) {
+      return kts ? (kts * 1.852).toFixed(1) : "";
+    }
 
-/* --- map tracks --- */
-let map;
-let layers = [];
+    function ft_to_km(ft) {
+      return ft ? (ft * 0.0003048).toFixed(2) : "";
+    }
 
-function initMap(){
-  map = L.map("map").setView([51.9851,5.8987], 11);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    .addTo(map);
-}
+    async function load_last10() {
+      const r = await fetch(BACKEND + "/api/last10");
+      const data = await r.json();
 
-async function loadTracks(){
-  if(!map) initMap();
-  layers.forEach(l=>l.remove());
-  layers = [];
+      const tbody = document.querySelector("#tbl-last10 tbody");
+      tbody.innerHTML = "";
 
-  const r = await fetch(`${BACKEND}/api/tracks`);
-  const tr = await r.json();
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${to_amsterdam(row.ts)}</td>
+          <td>${row.callsign}</td>
+          <td>${kts_to_kmh(row.gs_kts)}</td>
+          <td>${ft_to_km(row.alt_ft)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-  tr.forEach((track,i)=>{
-    const pts = track.points.map(p=>[p.lat,p.lon]);
-    if(pts.length<2) return;
-    const col = ["#444","#333","#666","#222","#555","#000","#777","#888","#111","#999"][i%10];
-    const line = L.polyline(pts,{color:col,weight:2}).addTo(map);
-    line.bindPopup(track.callsign);
-    layers.push(line);
-  });
+    // Initial load
+    load_last10();
 
-  const all = layers.flatMap(l=>l.getLatLngs());
-  if(all.length) map.fitBounds(all,{padding:[20,20]});
-}
-
-/* --- init --- */
-loadStats();
-loadLast10();
-loadDaily();
-loadTop();
-loadHeatmap();
-loadTracks();
-
-/* refresh light */
-setInterval(loadLast10, 60000);
-setInterval(loadTracks, 120000);
-</script>
+    // Refresh every minute
+    setInterval(load_last10, 60000);
+  </script>
 
 </body>
+
 </html>
