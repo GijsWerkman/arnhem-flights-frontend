@@ -342,7 +342,7 @@ let map;
 let trackLayers = [];
 
 function initMap() {
-  const center = [51.9851, 5.8987];
+  const center = [51.9851, 5.8987]; // Arnhem centrum
 
   map = L.map("map", {
     zoomControl: false,
@@ -354,13 +354,13 @@ function initMap() {
     touchZoom: false,
     tap: false,
     inertia: false
-  }).setView(center, 12); // zoom iets meer in zodat de cirkel mooi in beeld is
+  }).setView(center, 12);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-bijdragers"
   }).addTo(map);
 
-  // 7.5 km cirkel (= 7500 meter)
+  // Rode radius van 7.5 km
   L.circle(center, {
     radius: 7500,
     color: "red",
@@ -369,6 +369,7 @@ function initMap() {
     fillOpacity: 0.05
   }).addTo(map);
 }
+
 
 
 
