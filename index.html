@@ -5,11 +5,14 @@
   <title>Vliegtuigen boven Arnhem</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Fonts -->
+  <!-- Fonts à la RMarkdown -->
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600&family=Roboto+Mono&display=swap" rel="stylesheet">
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -31,11 +34,18 @@
       margin-bottom: 1rem;
     }
 
+    h1 { font-size: 2.1rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.2rem; }
+
+    p { margin: 0.6rem 0; }
+
     table {
       border-collapse: collapse;
       width: 100%;
       margin-top: 0.6rem;
       font-family: "Roboto Mono", monospace;
+      font-size: 0.9rem;
       background: #fff;
     }
 
@@ -87,312 +97,570 @@
       height: 16px;
       margin-right: 2px;
       border-radius: 2px;
+      background: transparent;
     }
 
-    .axis-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin: 4px 0;
-      color: #444;
+    .note {
+      font-size: 0.9rem;
+      color: #555;
     }
-
-    .note { font-size: 0.9rem; color: #555; }
   </style>
 </head>
 <body>
 
 <h1>Vliegtuigen boven Arnhem</h1>
+<p class="note">
+  Deze pagina toont vluchtgegevens binnen een straal van circa 7,5 km rond Arnhem.
+  De gegevens zijn afkomstig van <a href="https://adsb.fi" target="_blank">adsb.fi open data</a>
+  en worden uitsluitend voor persoonlijk, niet-commercieel gebruik ingezet.
+</p>
+<p class="note">
+  Met deze metingen wordt zichtbaar hoe vaak en wanneer er toestellen overkomen,
+  welke routes worden gevlogen en welke vluchten structureel boven Arnhem plaatsvinden.
+</p>
 
-<!-- INTRO -->
-<p class="note">Deze pagina toont vluchtgegevens binnen een straal van circa 7,5 km rond Arnhem…</p>
-
-<!-- MAP -->
+<!-- 1. Kaart en meetgebied -->
 <div class="section">
   <h2>Het meetgebied boven Arnhem</h2>
+  <p class="note">
+    De rode cirkel geeft het gebied weer waarbinnen vluchten worden geregistreerd.
+    De zwarte lijnen tonen de meest recente vluchten.
+  </p>
   <div id="map"></div>
   <p class="note" id="map-updated"></p>
 </div>
 
-<!-- STATS -->
+<!-- 2. Statistieken -->
 <div class="section">
   <h2>Overzicht van de gemeten vluchten</h2>
+  <p class="note">
+    Dit overzicht vat de huidige dataset samen qua aantallen vluchten,
+    duur van de meetperiode en dagelijkse drukte.
+  </p>
   <div id="stats"></div>
 </div>
 
-<!-- HEATMAP -->
+<!-- 3. Uurlijkse drukte -->
 <div class="section">
   <h2>Wanneer is het druk boven Arnhem?</h2>
-  <div class="axis-title">Uur van de dag</div>
+  <p class="note">
+    De onderstaande matrix laat per weekdag en uur zien hoe vaak er gemiddeld vluchten
+    in het meetgebied worden geregistreerd. Donkere vakken duiden op relatief drukke momenten.
+  </p>
   <div id="heatmap"></div>
-  <div class="axis-title">Weekdag</div>
 </div>
 
-<!-- DAILY CHART -->
+<!-- 4. Vluchten per dag -->
 <div class="section">
   <h2>Ontwikkeling van het aantal vluchten per dag</h2>
+  <p class="note">
+    Deze tijdreeks toont hoe het aantal vluchten per dag door de tijd heen varieert.
+    Pieken en dalen kunnen samenhangen met vakantieperiodes, weersomstandigheden of
+    wijzigingen in luchtverkeersroutes.
+  </p>
   <canvas id="dailyChart" height="90"></canvas>
 </div>
 
-<!-- TOP CALLSIGNS -->
+<!-- 5. Top callsigns -->
 <div class="section">
   <h2>Meest voorkomende callsigns</h2>
+  <p class="note">
+    Sommige vluchten komen frequent terug boven Arnhem. Onderstaande tabel toont de
+    callsigns welke het vaakst in het meetgebied geregistreerd zijn.
+  </p>
   <table id="tbl-top">
-    <thead><tr><th>Callsign</th><th>Aantal keer</th></tr></thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- LAST 10 -->
-<div class="section">
-  <h2>Meest recente vluchten</h2>
-  <table id="tbl-last10">
     <thead>
-      <tr><th>Tijd</th><th>Callsign</th><th>Snelheid (km/h)</th><th>Hoogte (km)</th></tr>
+      <tr><th>Callsign</th><th>Aantal keer</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-<!-- HISTOGRAMS -->
+<!-- 6. Meest recente vluchten -->
+<div class="section">
+  <h2>Meest recente vluchten</h2>
+  <p class="note">
+    Deze tabel geeft de meest recente vluchten weer, waarbij per combinatie van
+    callsign slechts de laatste meting wordt getoond.
+  </p>
+  <table id="tbl-last10">
+    <thead>
+      <tr>
+        <th>Tijd</th>
+        <th>Callsign</th>
+        <th>Snelheid (km/h)</th>
+        <th>Hoogte (km)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- 7. Histogram snelheden -->
 <div class="section">
   <h2>Snelheidsverdeling van unieke vluchten</h2>
+  <p class="note">
+    Dit histogram toont de verdeling van grondsnelheden van unieke vluchten binnen het meetgebied.
+  </p>
   <canvas id="speedHist" height="90"></canvas>
 </div>
 
+<!-- 8. Histogram hoogten -->
 <div class="section">
   <h2>Hoogteverdeling van unieke vluchten</h2>
+  <p class="note">
+    Dit histogram laat zien op welke hoogtes toestellen doorgaans over Arnhem vliegen.
+  </p>
   <canvas id="altHist" height="90"></canvas>
 </div>
 
+<!-- 9. Scatterplot snelheid vs. hoogte -->
+<div class="section">
+  <h2>Relatie tussen snelheid en hoogte</h2>
+  <p class="note">
+    Deze figuur toont per unieke vlucht de combinatie van grondsnelheid en hoogte
+    op het moment dat het toestel binnen de meetcirkel is gemeten.
+  </p>
+  <canvas id="scatterSpeedAlt" height="90"></canvas>
+</div>
+
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 const BACKEND = "https://arnhem-flights-api.onrender.com";
 
-/* helpers */
-function kts_to_kmh(kts){ return kts ? (kts*1.852).toFixed(1) : ""; }
-function ft_to_km(ft){ return ft ? (ft*0.0003048).toFixed(2) : ""; }
-function to_amsterdam(iso){
+/* Helpers */
+function kts_to_kmh(kts) {
+  return kts ? (kts * 1.852).toFixed(1) : "";
+}
+function ft_to_km(ft) {
+  return ft ? (ft * 0.0003048).toFixed(2) : "";
+}
+function to_amsterdam(iso) {
   if (!iso) return "";
   const dt = new Date(iso);
-  return dt.toLocaleString("nl-NL",{timeZone:"Europe/Amsterdam",hour12:false}).replace(",","");
+  return dt.toLocaleString("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    hour12: false
+  }).replace(",", "");
 }
 
-/* --- MAP --- */
-let map, trackLayers = [];
-
-function initMap() {
-  map = L.map("map", {
-    zoomControl:false, dragging:false, scrollWheelZoom:false,
-    doubleClickZoom:false, boxZoom:false, keyboard:false,
-    touchZoom:false, tap:false, inertia:false
-  }).setView([51.983333,5.916667], 11);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-  L.circle([51.983333,5.916667], {
-    radius:7500, color:"red", fillColor:"red", fillOpacity:0.05
-  }).addTo(map);
+/* ---- kaart timestamp ---- */
+async function updateMapTimestamp() {
+  try {
+    const r = await fetch(BACKEND + "/api/last10");
+    const data = await r.json();
+    if (!data || data.length === 0) return;
+    const human = to_amsterdam(data[0].ts);
+    document.getElementById("map-updated").textContent =
+      `Laatste update: ${human}`;
+  } catch (e) {
+    console.error("map timestamp error", e);
+  }
 }
 
-function clearTracks(){ trackLayers.forEach(l=>l.remove()); trackLayers=[]; }
-
-async function loadTracks(){
-  if(!map) initMap();
-  clearTracks();
-  try{
-    const data = await (await fetch(BACKEND+"/api/tracks")).json();
-    data.forEach(track=>{
-      const pts = track.points.filter(p=>p.lat&&p.lon).map(p=>[p.lat,p.lon]);
-      if(pts.length<2) return;
-      const poly = L.polyline(pts,{color:"black",weight:2,opacity:0.9});
-      poly.addTo(map).bindPopup(track.callsign);
-      trackLayers.push(poly);
+/* last 10 flights */
+async function loadLast10() {
+  try {
+    const r = await fetch(BACKEND + "/api/last10");
+    const data = await r.json();
+    const tbody = document.querySelector("#tbl-last10 tbody");
+    tbody.innerHTML = "";
+    data.forEach(row => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${to_amsterdam(row.ts)}</td>
+          <td>${row.callsign}</td>
+          <td>${kts_to_kmh(row.gs_kts)}</td>
+          <td>${ft_to_km(row.alt_ft)}</td>
+        </tr>`;
     });
-  }catch{}
+  } catch (e) {
+    console.error("last10 error", e);
+  }
 }
 
-/* --- STATS --- */
-async function loadStats(){
-  try{
-    const s = await (await fetch(BACKEND+"/api/stats")).json();
+/* stats */
+async function loadStats() {
+  try {
+    const r = await fetch(BACKEND + "/api/stats");
+    const s = await r.json();
     document.getElementById("stats").innerHTML = `
       <p><strong>Totaal aantal vluchten:</strong> ${s.total_flights}</p>
       <p><strong>Eerste meting:</strong> ${to_amsterdam(s.first_ts)}</p>
       <p><strong>Laatste meting:</strong> ${to_amsterdam(s.last_ts)}</p>
       <p><strong>Aantal dagen met data:</strong> ${s.days}</p>
       <p><strong>Mediaan vluchten per dag:</strong> ${s.median_per_day}</p>
-      <p><strong>Drukste dag:</strong> ${s.max_per_day_date} (${s.max_per_day} vluchten)</p>`;
-  }catch{}
+      <p><strong>Drukste dag:</strong> ${
+        s.max_per_day_date ? `${s.max_per_day_date} (${s.max_per_day} vluchten)` : "–"
+      }</p>`;
+  } catch (e) {
+    console.error("stats error", e);
+  }
 }
 
-/* --- LAST 10 --- */
-async function loadLast10(){
-  try{
-    const data = await (await fetch(BACKEND+"/api/last10")).json();
-    const tbody = document.querySelector("#tbl-last10 tbody");
-    tbody.innerHTML = data.map(row=>`
-      <tr>
-        <td>${to_amsterdam(row.ts)}</td>
-        <td>${row.callsign}</td>
-        <td>${kts_to_kmh(row.gs_kts)}</td>
-        <td>${ft_to_km(row.alt_ft)}</td>
-      </tr>`).join("");
-  }catch{}
-}
-
-/* --- TOP CALLSIGNS --- */
-async function loadTop(){
-  try{
-    const data = await (await fetch(BACKEND+"/api/top_callsigns")).json();
-    const tbody = document.querySelector("#tbl-top tbody");
-    tbody.innerHTML = data.map(r=>`<tr><td>${r.callsign}</td><td>${r.flights}</td></tr>`).join("");
-  }catch{}
-}
-
-/* --- DAILY CHART --- */
+/* daily chart */
 let dailyChart;
-async function loadDailyChart(){
-  try{
-    const data = await (await fetch(BACKEND+"/api/daily_counts")).json();
-    const labels = data.map(d=>d.day);
-    const values = data.map(d=>d.flights);
+async function loadDailyChart() {
+  try {
+    const r = await fetch(BACKEND + "/api/daily_counts");
+    const data = await r.json();
+    const labels = data.map(d => d.day);
+    const values = data.map(d => d.flights);
 
-    if(dailyChart) dailyChart.destroy();
-    dailyChart = new Chart(document.getElementById("dailyChart"),{
-      type:"line",
-      data:{
+    const ctx = document.getElementById("dailyChart");
+    if (dailyChart) dailyChart.destroy();
+    dailyChart = new Chart(ctx, {
+      type: "line",
+      data: {
         labels,
-        datasets:[{
-          data:values,
-          borderColor:"#444",
-          borderWidth:1.2,
-          tension:0.1,
-          pointRadius:0
+        datasets: [{
+          data: values,
+          borderColor: "#444",
+          borderWidth: 1.2,
+          tension: 0.1,
+          pointRadius: 0
         }]
       },
-      options:{
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{ title:{display:true,text:"Datum"} },
-          y:{ beginAtZero:true, title:{display:true,text:"Aantal unieke vluchten"} }
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            title: { display: true, text: "Datum" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Vluchten per dag" }
+          }
         }
       }
     });
-  }catch{}
+  } catch (e) {
+    console.error("daily chart error", e);
+  }
 }
 
-/* --- HEATMAP --- */
-async function loadHeatmap(){
-  try{
-    const data = await (await fetch(BACKEND+"/api/hourly_heatmap")).json();
-    const grid = Array.from({length:7},()=>Array(24).fill(0));
-    let max=0;
+/* hourly heatmap */
+async function loadHeatmap() {
+  try {
+    const r = await fetch(BACKEND + "/api/hourly_heatmap");
+    const data = await r.json();
 
-    data.forEach(r=>{
-      grid[r.dow][r.hour]=r.flights;
-      if(r.flights>max) max=r.flights;
+    const grid = Array.from({length:7},()=>Array(24).fill(0));
+    let max = 0;
+    data.forEach(row => {
+      grid[row.dow][row.hour] = row.flights;
+      if (row.flights > max) max = row.flights;
     });
 
-    const weekdays=["Zo","Ma","Di","Wo","Do","Vr","Za"];
-    const container=document.getElementById("heatmap");
-    container.innerHTML="";
+    const weekdays = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
+    const container = document.getElementById("heatmap");
+    container.innerHTML = "";
 
-    const hourRow=document.createElement("div");
-    hourRow.className="heat-row";
+    // X-as: uren
+    const hourRow = document.createElement("div");
+    hourRow.className = "heat-row";
     hourRow.innerHTML = `<div class="heat-label"></div>`;
-    for(let h=0;h<24;h++){
+    for (let h=0; h<24; h++) {
       hourRow.innerHTML += `<div style="width:16px;text-align:center;font-size:0.7rem;color:#444">${h}</div>`;
     }
     container.appendChild(hourRow);
 
-    for(let d=0;d<7;d++){
-      const row=document.createElement("div");
-      row.className="heat-row";
-      row.innerHTML = `<div class="heat-label">${weekdays[d]}</div>`;
-      for(let h=0;h<24;h++){
-        const v=grid[d][h];
-        let col="transparent";
-        if(v>0){
-          const t=v/max;
-          col=`rgb(${Math.round(255*t)},0,${Math.round(255*(1-t))})`;
+    // matrix zelf
+    for (let dow=0; dow<7; dow++) {
+      const rowDiv = document.createElement("div");
+      rowDiv.className = "heat-row";
+      rowDiv.innerHTML = `<div class="heat-label">${weekdays[dow]}</div>`;
+
+      for (let h=0; h<24; h++) {
+        const v = grid[dow][h];
+        let col = "transparent";
+        if (v > 0) {
+          const t = v / max;
+          col = `rgb(${Math.round(255*t)},0,${Math.round(255*(1-t))})`;
         }
-        row.innerHTML += `<div class="heat-cell" style="background:${col}" title="${weekdays[d]} ${h}:00 — ${v} vluchten"></div>`;
+        rowDiv.innerHTML += `<div class="heat-cell" style="background:${col}" title="${weekdays[dow]} ${h}:00 — ${v} vluchten"></div>`;
       }
-      container.appendChild(row);
+      container.appendChild(rowDiv);
     }
-  }catch{}
+  } catch (e) {
+    console.error("heatmap error", e);
+  }
 }
 
-/* --- SPEED HISTOGRAM --- */
+/* top callsigns */
+async function loadTop() {
+  try {
+    const r = await fetch(BACKEND + "/api/top_callsigns");
+    const data = await r.json();
+    const tbody = document.querySelector("#tbl-top tbody");
+    tbody.innerHTML = "";
+    data.forEach(row => {
+      tbody.innerHTML += `<tr><td>${row.callsign}</td><td>${row.flights}</td></tr>`;
+    });
+  } catch (e) {
+    console.error("top callsigns error", e);
+  }
+}
+
+/* histogram speed */
 let speedChart;
-async function loadSpeedHist(){
-  try{
-    const raw=await (await fetch(BACKEND+"/api/hist_speed")).json();
-    const kmh=raw.map(v=>v*1.852).filter(v=>v>0);
+async function loadSpeedHist() {
+  try {
+    const r = await fetch(BACKEND + "/api/hist_speed");
+    const raw = await r.json();
 
+    // knots -> km/h
+    const kmh = raw.map(k => k * 1.852).filter(v => v > 0);
+
+    // buckets: 0–100, ..., 900–1000, 1000+
     const buckets = Array(11).fill(0);
-    kmh.forEach(v=>{
-      if(v>=1000) buckets[10]++;
-      else buckets[Math.floor(v/100)]++;
+    kmh.forEach(v => {
+      if (v >= 1000) {
+        buckets[10]++;  // 1000+
+      } else if (v >= 0) {
+        const idx = Math.floor(v / 100);
+        buckets[idx]++;
+      }
     });
 
-    const labels=["0–100","100–200","200–300","300–400","400–500","500–600","600–700","700–800","800–900","900–1000","1000+"];
+    const labels = [
+      "0–100","100–200","200–300","300–400","400–500",
+      "500–600","600–700","700–800","800–900","900–1000","1000+"
+    ];
 
-    if(speedChart) speedChart.destroy();
-    speedChart = new Chart(document.getElementById("speedHist"),{
-      type:"bar",
-      data:{ labels, datasets:[{ data:buckets, backgroundColor:"#777" }]},
-      options:{
-        plugins:{ legend:{display:false}},
-        scales:{
-          x:{ title:{display:true,text:"Snelheid (km/h)"} },
-          y:{ beginAtZero:true, title:{display:true,text:"Aantal observaties"} }
+    const ctx = document.getElementById("speedHist");
+    if (speedChart) speedChart.destroy();
+
+    speedChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: buckets,
+          backgroundColor: "#777"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            title: { display: true, text: "Snelheid (km/h)" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Aantal observaties" }
+          }
         }
       }
     });
-  }catch{}
+  } catch (e) {
+    console.error("speedHist error", e);
+  }
 }
 
-/* --- ALTITUDE HISTOGRAM --- */
+/* histogram altitude */
 let altChart;
-async function loadAltHist(){
-  try{
-    const raw=await (await fetch(BACKEND+"/api/hist_altitude")).json();
-    const km = raw.map(v=>v*0.0003048).filter(v=>v>0);
+async function loadAltHist() {
+  try {
+    const r = await fetch(BACKEND + "/api/hist_altitude");
+    const raw = await r.json();
 
-    const buckets=Array(15).fill(0);
-    km.forEach(v=> v>=14 ? buckets[14]++ : buckets[Math.floor(v)]++);
+    // ft -> km
+    const km = raw.map(ft => ft * 0.0003048).filter(v => v > 0);
 
-    const labels=["0–1","1–2","2–3","3–4","4–5","5–6","6–7","7–8","8–9","9–10","10–11","11–12","12–13","13–14","14+"];
+    // buckets: 0–1, 1–2, ..., 13–14, 14+
+    const buckets = Array(15).fill(0);
+    km.forEach(v => {
+      if (v >= 14) {
+        buckets[14]++;     // 14+
+      } else if (v >= 0) {
+        const idx = Math.floor(v);   // 0 → 0–1, etc.
+        buckets[idx]++;
+      }
+    });
 
-    if(altChart) altChart.destroy();
-    altChart = new Chart(document.getElementById("altHist"),{
-      type:"bar",
-      data:{ labels, datasets:[{ data:buckets, backgroundColor:"#777" }]},
-      options:{
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{ title:{display:true,text:"Hoogte (km)"} },
-          y:{ beginAtZero:true, title:{display:true,text:"Aantal observaties"} }
+    const labels = [
+      "0–1","1–2","2–3","3–4","4–5","5–6","6–7",
+      "7–8","8–9","9–10","10–11","11–12","12–13","13–14","14+"
+    ];
+
+    const ctx = document.getElementById("altHist");
+    if (altChart) altChart.destroy();
+
+    altChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: buckets,
+          backgroundColor: "#777"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            title: { display: true, text: "Hoogte (km)" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Aantal observaties" }
+          }
         }
       }
     });
-  }catch{}
+  } catch (e) {
+    console.error("altHist error", e);
+  }
 }
 
-/* MAP TIMESTAMP */
-async function updateMapTimestamp(){
-  try{
-    const data = await (await fetch(BACKEND+"/api/last10")).json();
-    if(data.length>0){
-      document.getElementById("map-updated").textContent =
-        "Laatste update: "+to_amsterdam(data[0].ts);
-    }
-  }catch{}
+/* scatter speed vs altitude */
+let scatterChart;
+async function loadScatter() {
+  try {
+    const r = await fetch(BACKEND + "/api/scatter");
+    const data = await r.json();
+
+    // Expect each row: { gs_kts, alt_ft }
+    const points = data
+      .filter(d => d.gs_kts != null && d.alt_ft != null)
+      .map(d => ({
+        x: d.gs_kts * 1.852,           // knots → km/h
+        y: d.alt_ft * 0.0003048        // ft → km
+      }))
+      .filter(p => p.x >= 0 && p.x <= 1000 && p.y >= 0 && p.y <= 14);
+
+    const ctx = document.getElementById("scatterSpeedAlt");
+    if (scatterChart) scatterChart.destroy();
+
+    scatterChart = new Chart(ctx, {
+      type: "scatter",
+      data: {
+        datasets: [{
+          data: points,
+          pointRadius: 2,
+          pointHoverRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const x = ctx.parsed.x.toFixed(0);
+                const y = ctx.parsed.y.toFixed(2);
+                return ` ${x} km/h, ${y} km`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: "linear",
+            min: 0,
+            max: 1000,
+            ticks: {
+              stepSize: 100
+            },
+            title: {
+              display: true,
+              text: "Snelheid (km/h)"
+            }
+          },
+          y: {
+            type: "linear",
+            min: 0,
+            max: 14,
+            ticks: {
+              stepSize: 1
+            },
+            title: {
+              display: true,
+              text: "Hoogte (km)"
+            }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("scatter error", e);
+  }
 }
 
-/* INIT */
+/* Map + tracks */
+let map;
+let trackLayers = [];
+
+function initMap() {
+  const center = [51.983333, 5.916667];
+
+  map = L.map("map", {
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false,
+    tap: false,
+    inertia: false
+  }).setView(center, 11);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap-bijdragers"
+  }).addTo(map);
+
+  L.circle(center, {
+    radius: 7500,
+    color: "red",
+    weight: 2,
+    fillColor: "red",
+    fillOpacity: 0.05
+  }).addTo(map);
+}
+
+function clearTracks() {
+  trackLayers.forEach(l => l.remove());
+  trackLayers = [];
+}
+
+async function loadTracks() {
+  try {
+    if (!map) initMap();
+    const r = await fetch(BACKEND + "/api/tracks");
+    const data = await r.json();
+
+    clearTracks();
+
+    data.forEach(track => {
+      const pts = track.points
+        .filter(p => p.lat != null && p.lon != null)
+        .map(p => [p.lat, p.lon]);
+
+      if (pts.length < 2) return;
+
+      const poly = L.polyline(pts, {
+        color: "black",
+        weight: 2,
+        opacity: 0.9
+      });
+
+      poly.addTo(map).bindPopup(track.callsign);
+      trackLayers.push(poly);
+    });
+  } catch (e) {
+    console.error("tracks error", e);
+  }
+}
+
+/* init calls */
 loadStats();
 loadHeatmap();
 loadDailyChart();
@@ -401,16 +669,18 @@ loadLast10();
 loadTracks();
 loadSpeedHist();
 loadAltHist();
+loadScatter();
 updateMapTimestamp();
 
 /* periodic refresh */
-setInterval(loadLast10,60000);
-setInterval(loadTracks,120000);
-setInterval(loadDailyChart,300000);
-setInterval(loadTop,300000);
-setInterval(updateMapTimestamp,60000);
-setInterval(loadSpeedHist,300000);
-setInterval(loadAltHist,300000);
+setInterval(loadLast10, 60000);
+setInterval(loadTracks, 120000);
+setInterval(loadDailyChart, 300000);
+setInterval(loadTop, 300000);
+setInterval(updateMapTimestamp, 60000);
+setInterval(loadSpeedHist, 300000);
+setInterval(loadAltHist, 300000);
+setInterval(loadScatter, 300000);
 </script>
 
 </body>
