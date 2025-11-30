@@ -342,6 +342,8 @@ let map;
 let trackLayers = [];
 
 function initMap() {
+  const center = [51.9851, 5.8987];
+
   map = L.map("map", {
     zoomControl: false,
     dragging: false,
@@ -352,13 +354,22 @@ function initMap() {
     touchZoom: false,
     tap: false,
     inertia: false
-  }).setView([51.9851, 5.8987], 11);
+  }).setView(center, 12); // zoom iets meer in zodat de cirkel mooi in beeld is
 
-  // tegelset
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-bijdragers"
   }).addTo(map);
+
+  // 7.5 km cirkel (= 7500 meter)
+  L.circle(center, {
+    radius: 7500,
+    color: "red",
+    weight: 2,
+    fillColor: "red",
+    fillOpacity: 0.05
+  }).addTo(map);
 }
+
 
 
 function clearTracks() {
