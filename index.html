@@ -318,6 +318,25 @@ async function loadHeatmap() {
     const container = document.getElementById("heatmap");
     container.innerHTML = "";
 
+    // ---- X-as labels (uren) ----
+    const hourRow = document.createElement("div");
+    hourRow.className = "heat-row";
+    const spacer = document.createElement("div");
+    spacer.className = "heat-label";
+    hourRow.appendChild(spacer);
+
+    for (let h = 0; h < 24; h++) {
+      const lbl = document.createElement("div");
+      lbl.style.width = "16px";
+      lbl.style.textAlign = "center";
+      lbl.style.fontSize = "0.7rem";
+      lbl.style.color = "#444";
+      lbl.textContent = h;
+      hourRow.appendChild(lbl);
+    }
+    container.appendChild(hourRow);
+
+    // ---- Heatmap zelf ----
     for (let dow = 0; dow < 7; dow++) {
       const rowDiv = document.createElement("div");
       rowDiv.className = "heat-row";
@@ -333,9 +352,15 @@ async function loadHeatmap() {
         cell.className = "heat-cell";
 
         if (max > 0 && v > 0) {
+          // t = intensiteit 0–1
           const t = v / max;
-          const alpha = 0.15 + 0.6 * t;
-          cell.style.backgroundColor = `rgba(40,40,80,${alpha})`;
+
+          // blauw → rood overgang (linear interpolation)
+          const r_val = Math.round(255 * t);
+          const g_val = 0;
+          const b_val = Math.round(255 * (1 - t));
+
+          cell.style.backgroundColor = `rgb(${r_val},${g_val},${b_val})`;
         } else {
           cell.style.backgroundColor = "transparent";
         }
@@ -348,6 +373,7 @@ async function loadHeatmap() {
     console.error("heatmap error", e);
   }
 }
+
 
 /* 5. Top callsigns */
 async function loadTop() {
@@ -383,7 +409,7 @@ function initMap() {
     touchZoom: false,
     tap: false,
     inertia: false
-  }).setView(center, 12);
+  }).setView(center, 10);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-bijdragers"
