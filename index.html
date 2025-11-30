@@ -421,10 +421,19 @@ async function loadSpeedHist() {
           backgroundColor: "#777"
         }]
       },
-      options: { 
-        plugins:{legend:{display:false}},
-        scales:{y:{beginAtZero:true}}
-      }
+      options: {
+        plugins: { legend: { display: false }},
+        scales: {
+          x: {
+            title: { display: true, text: "Snelheid (km/h)" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Aantal observaties" }
+          }
+  }
+}
+
     });
   } catch (e) {
     console.error("speedHist error", e);
@@ -470,10 +479,19 @@ async function loadAltHist() {
           backgroundColor: "#777"
         }]
       },
-      options: { 
-        plugins:{legend:{display:false}},
-        scales:{y:{beginAtZero:true}}
-      }
+      options: {
+        plugins: { legend: { display: false }},
+        scales: {
+          x: {
+            title: { display: true, text: "Hoogte (km)" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Aantal observaties" }
+            }
+  }
+}
+
     });
   } catch (e) {
     console.error("altHist error", e);
