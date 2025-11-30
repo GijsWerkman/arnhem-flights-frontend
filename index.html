@@ -389,20 +389,46 @@ async function loadSpeedHist() {
     const r = await fetch(BACKEND + "/api/hist_speed");
     const raw = await r.json();
 
-    const kmh = raw.map(k => k * 1.852).filter(v => v>0);
-    if (kmh.length === 0) return;
+    // convert knots → km/h
+    const kmh = raw.map(k => k * 1.852).filter(v => v > 0);
 
-    const {labels, bins} = makeHistogram(kmh, 20);
+    // buckets: 0–100, 100–200, ..., 900–1000, 1000+
+    const buckets = Array(11).fill(0);
+
+    kmh.forEach(v => {
+      if (v >= 1000) {
+        buckets[10]++;     // 1000+
+      } else {
+        const idx = Math.floor(v / 100); // integer 0–10
+        buckets[idx]++;
+      }
+    });
+
+    const labels = [
+      "0–100","100–200","200–300","300–400","400–500",
+      "500–600","600–700","700–800","800–900","900–1000","1000+"
+    ];
 
     const ctx = document.getElementById("speedHist");
     if (speedChart) speedChart.destroy();
 
     speedChart = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ data: bins, backgroundColor:"#777" }]},
-      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      data: {
+        labels,
+        datasets: [{
+          data: buckets,
+          backgroundColor: "#777"
+        }]
+      },
+      options: { 
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true}}
+      }
     });
-  } catch {}
+  } catch (e) {
+    console.error("speedHist error", e);
+  }
 }
 
 /* histogram altitude */
@@ -412,20 +438,46 @@ async function loadAltHist() {
     const r = await fetch(BACKEND + "/api/hist_altitude");
     const raw = await r.json();
 
-    const km = raw.map(ft => ft * 0.0003048).filter(v => v>0);
-    if (km.length === 0) return;
+    // convert ft → km
+    const km = raw.map(ft => ft * 0.0003048).filter(v => v > 0);
 
-    const {labels, bins} = makeHistogram(km, 20);
+    // height buckets 0–1, 1–2, ..., 13–14, >=14
+    const buckets = Array(15).fill(0);
+
+    km.forEach(v => {
+      if (v >= 14) {
+        buckets[14]++;    // 14+
+      } else {
+        const idx = Math.floor(v);   // 0 → 0–1, 1 → 1–2, ...
+        buckets[idx]++;
+      }
+    });
+
+    const labels = [
+      "0–1","1–2","2–3","3–4","4–5","5–6","6–7",
+      "7–8","8–9","9–10","10–11","11–12","12–13","13–14","14+"
+    ];
 
     const ctx = document.getElementById("altHist");
     if (altChart) altChart.destroy();
 
     altChart = new Chart(ctx, {
       type: "bar",
-      data: { labels, datasets: [{ data: bins, backgroundColor:"#777" }]},
-      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      data: {
+        labels,
+        datasets: [{
+          data: buckets,
+          backgroundColor: "#777"
+        }]
+      },
+      options: { 
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true}}
+      }
     });
-  } catch {}
+  } catch (e) {
+    console.error("altHist error", e);
+  }
 }
 
 /* Map + tracks */
