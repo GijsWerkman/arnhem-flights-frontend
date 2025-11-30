@@ -170,10 +170,7 @@
   </p>
   <table id="tbl-top">
     <thead>
-      <tr>
-        <th>Callsign</th>
-        <th>Aantal keer</th>
-      </tr>
+      <tr><th>Callsign</th><th>Aantal keer</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -199,6 +196,24 @@
   </table>
 </div>
 
+<!-- 7. Histogram snelheden -->
+<div class="section">
+  <h2>Snelheidsverdeling van unieke vluchten</h2>
+  <p class="note">
+    Dit histogram toont de verdeling van grondsnelheden van unieke vluchten binnen het meetgebied.
+  </p>
+  <canvas id="speedHist" height="90"></canvas>
+</div>
+
+<!-- 8. Histogram hoogten -->
+<div class="section">
+  <h2>Hoogteverdeling van unieke vluchten</h2>
+  <p class="note">
+    Dit histogram laat zien op welke hoogtes toestellen doorgaans over Arnhem vliegen.
+  </p>
+  <canvas id="altHist" height="90"></canvas>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -221,22 +236,19 @@ function to_amsterdam(iso) {
   }).replace(",", "");
 }
 
-/* ---- NEW: update kaart-timestamp ---- */
+/* ---- kaart timestamp ---- */
 async function updateMapTimestamp() {
   try {
     const r = await fetch(BACKEND + "/api/last10");
     const data = await r.json();
     if (!data || data.length === 0) return;
-    const ts = data[0].ts;
-    const human = to_amsterdam(ts);
+    const human = to_amsterdam(data[0].ts);
     document.getElementById("map-updated").textContent =
       `Laatste update: ${human}`;
-  } catch (e) {
-    console.error("map timestamp error", e);
-  }
+  } catch (e) {}
 }
 
-/* 1. Last 10 flights */
+/* last 10 flights */
 async function loadLast10() {
   try {
     const r = await fetch(BACKEND + "/api/last10");
@@ -244,42 +256,35 @@ async function loadLast10() {
     const tbody = document.querySelector("#tbl-last10 tbody");
     tbody.innerHTML = "";
     data.forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${to_amsterdam(row.ts)}</td>
-        <td>${row.callsign}</td>
-        <td>${kts_to_kmh(row.gs_kts)}</td>
-        <td>${ft_to_km(row.alt_ft)}</td>
-      `;
-      tbody.appendChild(tr);
+      tbody.innerHTML += `
+        <tr>
+          <td>${to_amsterdam(row.ts)}</td>
+          <td>${row.callsign}</td>
+          <td>${kts_to_kmh(row.gs_kts)}</td>
+          <td>${ft_to_km(row.alt_ft)}</td>
+        </tr>`;
     });
-  } catch (e) {
-    console.error("last10 error", e);
-  }
+  } catch {}
 }
 
-/* 2. Stats */
+/* stats */
 async function loadStats() {
   try {
     const r = await fetch(BACKEND + "/api/stats");
     const s = await r.json();
-    const el = document.getElementById("stats");
-    el.innerHTML = `
+    document.getElementById("stats").innerHTML = `
       <p><strong>Totaal aantal vluchten:</strong> ${s.total_flights}</p>
       <p><strong>Eerste meting:</strong> ${to_amsterdam(s.first_ts)}</p>
       <p><strong>Laatste meting:</strong> ${to_amsterdam(s.last_ts)}</p>
       <p><strong>Aantal dagen met data:</strong> ${s.days}</p>
       <p><strong>Mediaan vluchten per dag:</strong> ${s.median_per_day}</p>
       <p><strong>Drukste dag:</strong> ${
-        s.max_per_day_date ? s.max_per_day_date + " (" + s.max_per_day + " vluchten)" : "–"
-      }</p>
-    `;
-  } catch (e) {
-    console.error("stats error", e);
-  }
+        s.max_per_day_date ? `${s.max_per_day_date} (${s.max_per_day} vluchten)` : "–"
+      }</p>`;
+  } catch {}
 }
 
-/* 3. Daily chart */
+/* daily chart */
 let dailyChart;
 async function loadDailyChart() {
   try {
@@ -292,108 +297,57 @@ async function loadDailyChart() {
     if (dailyChart) dailyChart.destroy();
     dailyChart = new Chart(ctx, {
       type: "line",
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          borderColor: "#444",
-          borderWidth: 1.2,
-          tension: 0.1,
-          pointRadius: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 10 } },
-          y: { beginAtZero: true }
-        }
-      }
+      data: { labels, datasets: [{ data: values, borderColor: "#444", borderWidth: 1.2, tension: 0.1, pointRadius: 0 }]},
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
     });
-  } catch (e) {
-    console.error("daily chart error", e);
-  }
+  } catch {}
 }
 
-/* 4. Heatmap (simple div grid) */
+/* hourly heatmap */
 async function loadHeatmap() {
   try {
     const r = await fetch(BACKEND + "/api/hourly_heatmap");
     const data = await r.json();
 
-    // Build matrix: dow 0–6, hour 0–23
     const grid = Array.from({length:7},()=>Array(24).fill(0));
     let max = 0;
     data.forEach(row => {
-      const d = row.dow;
-      const h = row.hour;
-      const v = row.flights;
-      grid[d][h] = v;
-      if (v > max) max = v;
+      grid[row.dow][row.hour] = row.flights;
+      if (row.flights > max) max = row.flights;
     });
 
     const weekdays = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
     const container = document.getElementById("heatmap");
     container.innerHTML = "";
 
-    // ---- X-as labels (uren) ----
     const hourRow = document.createElement("div");
     hourRow.className = "heat-row";
-    const spacer = document.createElement("div");
-    spacer.className = "heat-label";
-    hourRow.appendChild(spacer);
-
-    for (let h = 0; h < 24; h++) {
-      const lbl = document.createElement("div");
-      lbl.style.width = "16px";
-      lbl.style.textAlign = "center";
-      lbl.style.fontSize = "0.7rem";
-      lbl.style.color = "#444";
-      lbl.textContent = h;
-      hourRow.appendChild(lbl);
+    hourRow.innerHTML = `<div class="heat-label"></div>`;
+    for (let h=0;h<24;h++){
+      hourRow.innerHTML += `<div style="width:16px;text-align:center;font-size:0.7rem;color:#444">${h}</div>`;
     }
     container.appendChild(hourRow);
 
-    // ---- Heatmap zelf ----
-    for (let dow = 0; dow < 7; dow++) {
+    for (let dow=0;dow<7;dow++){
       const rowDiv = document.createElement("div");
       rowDiv.className = "heat-row";
+      rowDiv.innerHTML = `<div class="heat-label">${weekdays[dow]}</div>`;
 
-      const label = document.createElement("div");
-      label.className = "heat-label";
-      label.textContent = weekdays[dow];
-      rowDiv.appendChild(label);
-
-      for (let h = 0; h < 24; h++) {
+      for (let h=0;h<24;h++){
         const v = grid[dow][h];
-        const cell = document.createElement("div");
-        cell.className = "heat-cell";
-
-        if (max > 0 && v > 0) {
-          // t = intensiteit 0–1
-          const t = v / max;
-
-          // blauw → rood overgang
-          const r_val = Math.round(255 * t);
-          const g_val = 0;
-          const b_val = Math.round(255 * (1 - t));
-
-          cell.style.backgroundColor = `rgb(${r_val},${g_val},${b_val})`;
-        } else {
-          cell.style.backgroundColor = "transparent";
+        let col = "transparent";
+        if (v>0){
+          const t = v/max;
+          col = `rgb(${Math.round(255*t)},0,${Math.round(255*(1-t))})`;
         }
-        cell.title = `${weekdays[dow]} ${h}:00 — ${v} vluchten`;
-        rowDiv.appendChild(cell);
+        rowDiv.innerHTML += `<div class="heat-cell" style="background:${col}" title="${weekdays[dow]} ${h}:00 — ${v} vluchten"></div>`;
       }
       container.appendChild(rowDiv);
     }
-  } catch (e) {
-    console.error("heatmap error", e);
-  }
+  } catch {}
 }
 
-/* 5. Top callsigns */
+/* top callsigns */
 async function loadTop() {
   try {
     const r = await fetch(BACKEND + "/api/top_callsigns");
@@ -401,21 +355,85 @@ async function loadTop() {
     const tbody = document.querySelector("#tbl-top tbody");
     tbody.innerHTML = "";
     data.forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${row.callsign}</td><td>${row.flights}</td>`;
-      tbody.appendChild(tr);
+      tbody.innerHTML += `<tr><td>${row.callsign}</td><td>${row.flights}</td></tr>`;
     });
-  } catch (e) {
-    console.error("top callsigns error", e);
-  }
+  } catch {}
 }
 
-/* 6. Map + tracks */
+/* histogram helpers */
+function makeHistogram(values, binCount) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const bins = Array(binCount).fill(0);
+  const step = (max - min) / binCount;
+
+  values.forEach(v => {
+    const idx = Math.min(
+      Math.floor((v - min) / step),
+      binCount - 1
+    );
+    bins[idx]++;
+  });
+
+  const labels = bins.map((_, i) =>
+    `${(min + i*step).toFixed(0)}–${(min + (i+1)*step).toFixed(0)}`
+  );
+
+  return { labels, bins };
+}
+
+/* histogram speed */
+let speedChart;
+async function loadSpeedHist() {
+  try {
+    const r = await fetch(BACKEND + "/api/hist_speed");
+    const raw = await r.json();
+
+    const kmh = raw.map(k => k * 1.852).filter(v => v>0);
+    if (kmh.length === 0) return;
+
+    const {labels, bins} = makeHistogram(kmh, 20);
+
+    const ctx = document.getElementById("speedHist");
+    if (speedChart) speedChart.destroy();
+
+    speedChart = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ data: bins, backgroundColor:"#777" }]},
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  } catch {}
+}
+
+/* histogram altitude */
+let altChart;
+async function loadAltHist() {
+  try {
+    const r = await fetch(BACKEND + "/api/hist_altitude");
+    const raw = await r.json();
+
+    const km = raw.map(ft => ft * 0.0003048).filter(v => v>0);
+    if (km.length === 0) return;
+
+    const {labels, bins} = makeHistogram(km, 20);
+
+    const ctx = document.getElementById("altHist");
+    if (altChart) altChart.destroy();
+
+    altChart = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ data: bins, backgroundColor:"#777" }]},
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  } catch {}
+}
+
+/* Map + tracks */
 let map;
 let trackLayers = [];
 
 function initMap() {
-  const center = [51.983333, 5.916667]; // Arnhem
+  const center = [51.983333, 5.916667];
 
   map = L.map("map", {
     zoomControl: false,
@@ -429,11 +447,9 @@ function initMap() {
     inertia: false
   }).setView(center, 11);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap-bijdragers"
-  }).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    .addTo(map);
 
-  // Rode radius van 7,5 km
   L.circle(center, {
     radius: 7500,
     color: "red",
@@ -458,7 +474,7 @@ async function loadTracks() {
 
     data.forEach(track => {
       const pts = track.points
-        .filter(p => p.lat != null && p.lon != null)
+        .filter(p => p.lat && p.lon)
         .map(p => [p.lat, p.lon]);
 
       if (pts.length < 2) return;
@@ -468,28 +484,33 @@ async function loadTracks() {
         weight: 2,
         opacity: 0.9
       });
+
       poly.addTo(map).bindPopup(track.callsign);
       trackLayers.push(poly);
     });
-  } catch (e) {
-    console.error("tracks error", e);
-  }
+  } catch {}
 }
 
-/* Init */
+/* init calls */
 loadStats();
 loadHeatmap();
 loadDailyChart();
 loadTop();
 loadLast10();
 loadTracks();
+loadSpeedHist();     // NEW
+loadAltHist();       // NEW
 updateMapTimestamp();
 
+/* periodic refresh */
 setInterval(loadLast10, 60000);
 setInterval(loadTracks, 120000);
 setInterval(loadDailyChart, 300000);
 setInterval(loadTop, 300000);
 setInterval(updateMapTimestamp, 60000);
+setInterval(loadSpeedHist, 300000);   // NEW
+setInterval(loadAltHist, 300000);     // NEW
+
 </script>
 
 </body>
