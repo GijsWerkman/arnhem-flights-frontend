@@ -342,11 +342,24 @@ let map;
 let trackLayers = [];
 
 function initMap() {
-  map = L.map("map").setView([51.9851, 5.8987], 11);
+  map = L.map("map", {
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false,
+    tap: false,
+    inertia: false
+  }).setView([51.9851, 5.8987], 11);
+
+  // tegelset
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-bijdragers"
   }).addTo(map);
 }
+
 
 function clearTracks() {
   trackLayers.forEach(l => l.remove());
