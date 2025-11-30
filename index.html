@@ -217,7 +217,7 @@ async function loadStats() {
     const s = await r.json();
     const el = document.getElementById("stats");
     el.innerHTML = `
-      <p><strong>Totaal aantal vluchten (uniek per callsign & uur):</strong> ${s.total_flights}</p>
+      <p><strong>Totaal aantal vluchten:</strong> ${s.total_flights}</p>
       <p><strong>Eerste meting:</strong> ${to_amsterdam(s.first_ts)}</p>
       <p><strong>Laatste meting:</strong> ${to_amsterdam(s.last_ts)}</p>
       <p><strong>Aantal dagen met data:</strong> ${s.days}</p>
